@@ -1,0 +1,39 @@
+---
+- name: AUTOMATED PAT CONFIGURATION FOR ROUTER R1
+  hosts: routers
+  gather_facts: false
+  
+  vars:
+    cli:
+      username: cisco
+      password: cisco123!
+      timeout: 100
+      auth_pass: cisco
+
+  tasks:
+   - name: R1 PAT CONFIGURATION
+     when: ansible_host == "12.30.0.1" 
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - ip nat pool OWNER_SUBNET_POOL 180.20.22.1 180.20.22.2 netmask 255.255.255.252 
+         - ip nat pool ADMIN_SUBNET_POOL 180.20.22.1 180.20.22.2 netmask 255.255.255.252 
+         - ip nat inside source list 1 pool OWNER_SUBNET_POOL overload 
+         - ip nat inside source list 2 pool ADMIN_SUBNET_POOL overload 
+
+   - name: VERIFYING CONFIGS DONE ON R1
+     when: ansible_host == "12.30.0.1" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "12.30.0.1" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/PAT_config_R1.txt"

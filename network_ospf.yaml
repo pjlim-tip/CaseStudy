@@ -1,0 +1,102 @@
+---
+- name: NETWORK AUTOMATED OSPF CONFIG FOR ROUTERS R1-R3
+  hosts: routers
+  gather_facts: false
+  
+  vars:
+    cli:
+      username: cisco
+      password: cisco123!
+      timeout: 100
+      auth_pass: cisco
+
+  tasks:
+   - name: R1 OSPF CONFIGURATION
+     when: ansible_host == "12.30.0.1"
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - router-id 0.0.0.1
+         - network 12.30.0.0 0.0.0.3 area 0
+         - network 12.30.0.8 0.0.0.3 area 0 
+         - default-information originate
+       parents: router ospf 10 
+
+   - name: R2 OSPF CONFIGURATION
+     when: ansible_host == "175.20.22.1"
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - router-id 0.0.0.2 
+         - passive-interface f0/0
+         - passive-interface f0/1
+         - network 12.30.0.0 0.0.0.3 area 0 
+         - network 12.30.0.4 0.0.0.3 area 0 
+         - network 175.20.22.0 0.0.0.3 area 0 
+         - network 192.20.80.80 0.0.0.7 area 0 
+       parents: router ospf 10 
+
+   - name: R3 OSPF CONFIGURATION
+     when: ansible_host == "12.30.0.6" 
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - router-id 0.0.0.3 
+         - passive-interface f0/0
+         - passive-interface f0/1
+         - network 12.30.0.8 0.0.0.3 area 0 
+         - network 12.30.0.4 0.0.0.3 area 0 
+         - network 192.20.80.0 0.0.0.63 area 0 
+         - network 192.20.80.64 0.0.0.15 area 0 
+       parents: router ospf 10 
+
+   - name: VERIFYING CONFIGS DONE ON R1
+     when: ansible_host == "12.30.0.1" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "12.30.0.1" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/R1_OSPF.txt"
+
+   - name: VERIFYING CONFIGS DONE ON R2
+     when: ansible_host == "175.20.22.1" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "175.20.22.1" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/R2_OSPF.txt"
+
+   - name: DISPLAYING THE RUNNING-CONFIG FOR R3
+     when: ansible_host == "12.30.0.6" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "12.30.0.6" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/R3_OSPF.txt"

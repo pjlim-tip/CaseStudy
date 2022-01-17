@@ -1,0 +1,73 @@
+---
+- name: NETWORK AUTOMATED ACCESS LISTS CONFIG FOR ROUTERS R1-R2
+  hosts: routers
+  gather_facts: false
+  
+  vars:
+    cli:
+      username: cisco
+      password: cisco123!
+      timeout: 100
+      auth_pass: cisco
+
+  tasks:
+   - name: R2 OWNER ACCESS LIST CONFIG 
+     when: ansible_host == "175.20.22.1" 
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - deny 192.20.80.0 0.0.0.63 
+         - deny 192.20.80.64 0.0.0.15 
+         - permit any
+       parents: ip access-list standard OWNER_ACCESS_RESTRICTIONS 
+   
+   - name: R2 F0/1 ACCESS GROUP CONFIG
+     when: ansible_host == "175.20.22.1" 
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - int f0/1
+         - ip access-group OWNER_ACCESS_RESTRICTIONS out
+
+   - name: R1 PAT ACCESS LIST CONFIG
+     when: ansible_host == "12.30.0.1"
+     ios_config:
+       provider: "{{ cli }}"
+       authorize: yes
+       lines: 
+         - access-list 1 permit 192.20.80.80 0.0.0.7
+         - access-list 2 permit 175.20.22.0 0.0.0.3
+
+   - name: VERIFYING CONFIGS DONE ON R1
+     when: ansible_host == "12.30.0.1" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "12.30.0.1" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/ACL_R1.txt"
+
+   - name: VERIFYING CONFIGS DONE ON R2
+     when: ansible_host == "175.20.22.1" 
+     ios_command:
+       provider: "{{ cli }}"
+       authorize: yes
+       commands:
+         - show run
+         - wr
+     register: config
+
+   - name: SAVING OUTPUT TO ./configs_list/
+     when: ansible_host == "175.20.22.1" 
+     copy:
+       content: "{{ config.stdout[0] }}"
+       dest: "configs_list/ACL_R2.txt"
